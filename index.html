@@ -7,8 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>NEON VOLT — неоновый раннер</title>
 
-<!-- [VK-FIX] Официальный VK Bridge -->
-<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+<meta name="vkplay-gmid" content="51499">
+<!-- Адрес бэкенда с server.js (Render / Railway / Fly.io и т.п.) -->
+<meta name="vkplay-api-base" content="https://YOUR_BACKEND.onrender.com">
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -148,10 +150,20 @@ html,body{
 .btn-exit{background:rgba(255,77,109,.08);color:#ffb1c0;border:1px solid rgba(255,77,109,.28);}
 .btn-exit:hover{background:rgba(255,77,109,.16);border-color:rgba(255,77,109,.5);color:#ffd6dd;}
 
-/* [AD-FIX] Стили для кнопки Rewarded Video */
-.btn-ad{background:linear-gradient(180deg,#ffd166 0%,#f0a020 100%);color:#1a0d00;box-shadow:0 10px 30px rgba(255,209,102,.35), inset 0 -3px 0 rgba(0,0,0,.16);position:relative;}
-.btn-ad:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(255,209,102,.5), inset 0 -3px 0 rgba(0,0,0,.16);}
-.btn-ad:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none;}
+/* Магазин поддержки и привилегии */
+.btn-shop{background:linear-gradient(180deg,#ffd166 0%,#f0a020 100%);color:#1a0d00;box-shadow:0 10px 30px rgba(255,209,102,.35), inset 0 -3px 0 rgba(0,0,0,.16);}
+.btn-shop:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(255,209,102,.5), inset 0 -3px 0 rgba(0,0,0,.16);}
+.btn-revive{background:linear-gradient(180deg,#c9a2ff 0%,#8b5cf6 100%);color:#160a2e;box-shadow:0 10px 30px rgba(139,92,246,.45), inset 0 -3px 0 rgba(0,0,0,.18);}
+.btn-revive:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(139,92,246,.6), inset 0 -3px 0 rgba(0,0,0,.18);}
+.supporter-badge{margin-top:.8em;font-size:.78em;letter-spacing:.12em;font-weight:800;color:#ffd166;text-shadow:0 0 18px rgba(255,209,102,.55);}
+.shop-list{display:flex;flex-direction:column;gap:.8em;margin:.4em 0 1.2em;text-align:left;max-height:52vh;overflow-y:auto;padding-right:.25em;}
+.shop-item{padding:1em 1.1em;border-radius:1em;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);}
+.shop-item.owned{border-color:rgba(77,226,197,.55);background:rgba(77,226,197,.08);}
+.shop-item h3{margin:0 0 .35em;font-size:1.05em;color:#ffd166;}
+.shop-item p{margin:0 0 .8em;font-size:.82em;line-height:1.45;color:rgba(232,236,255,.7);}
+.shop-item .price{font-weight:900;color:#4de2c5;letter-spacing:.04em;}
+.shop-item .btn{width:100%;padding:.65em 1em;font-size:.92em;}
+.shop-status{min-height:1.4em;margin-bottom:.8em;font-size:.82em;color:#ffd166;text-align:center;}
 
 .save-note{margin-top:1.1em;font-size:.8em;color:rgba(232,236,255,.42);letter-spacing:.02em;font-weight:500;line-height:1.4;}
 .save-note .cloud{color:#4de2c5;margin-right:.35em;}
@@ -254,9 +266,11 @@ html,body{
           <div class="btn-col">
             <button class="btn btn-primary" id="btnPlay">▶  Играть</button>
             <button class="btn btn-ghost" id="btnHowTo">Как играть</button>
+            <button class="btn btn-shop" id="btnShop">💎 Магазин поддержки</button>
             <button class="btn btn-ghost" id="btnSound">🔊  Звук: вкл</button>
             <button class="btn btn-exit" id="btnExit">⏻  Выйти из игры</button>
           </div>
+          <div class="supporter-badge" id="supporterBadge" hidden></div>
           <p class="save-note" id="menuSaveNote"><span class="cloud">☁</span>Ваш рекорд сохраняется автоматически</p>
         </div>
       </div>
@@ -265,6 +279,16 @@ html,body{
         <div class="panel">
           <div id="howtoContent"></div>
           <button class="btn btn-primary" id="btnHowToClose">Понятно</button>
+        </div>
+      </div>
+
+      <div class="screen" id="scrShop">
+        <div class="panel">
+          <h2 class="title-sm" id="shopTitle">Магазин поддержки</h2>
+          <p class="subtitle" style="font-size:.85em;margin-bottom:1em;">Поддержка разработки — только косметика и удобство, без обязательных покупок.</p>
+          <div class="shop-status" id="shopStatus"></div>
+          <div class="shop-list" id="shopList"></div>
+          <button class="btn btn-primary" id="btnShopClose">Вернуться в меню</button>
         </div>
       </div>
 
@@ -277,8 +301,7 @@ html,body{
           <div class="go-best" id="goBestRow">Рекорд: <span id="goBest">0</span></div>
           <p class="save-note" id="goSaveNote"><span class="cloud">☁</span>Рекорд сохранён</p>
           <div class="btn-col">
-            <!-- [AD-FIX] Кнопка Rewarded Video -->
-            <button class="btn btn-ad" id="btnRewardedAd" style="display:none;">🎁 Смотреть рекламу и получить ×2</button>
+            <button class="btn btn-revive" id="btnRevive" style="display:none;">💜 Воскреснуть</button>
             <button class="btn btn-primary" id="btnRestart">↻  Играть снова</button>
             <button class="btn btn-ghost" id="btnToMenu">В меню</button>
           </div>
@@ -298,146 +321,12 @@ html,body{
   </div>
 </div>
 
+<script src="vkplay-billing.js"></script>
 <script>
 /* ═════════════════════════════════════════════════════════════════════════
-   NEON VOLT — VK Play Edition (с рекламной монетизацией)
+   NEON VOLT — VK Play Edition (Free-to-play, внутриигровые покупки)
+   Авторизация, платежи и привилегии: vkplay-billing.js
    ═════════════════════════════════════════════════════════════════════════ */
-
-/* ═════════════════════════════════════════════════════════════════════════
-   [VK-FIX] VK BRIDGE
-   ═════════════════════════════════════════════════════════════════════════ */
-
-let vkBridgeReady = false;
-
-function initVKBridge() {
-  if (typeof vkBridge === 'undefined') {
-    console.info('[VK] vkBridge not available — offline mode (localStorage fallback)');
-    vkBridgeReady = false;
-    return;
-  }
-  vkBridge.send('VKWebAppInit', {})
-    .then(function () {
-      vkBridgeReady = true;
-      console.info('[VK] VKWebAppInit OK');
-      return vkBridge.send('VKWebAppStorageGet', { keys: ['highscore'] });
-    })
-    .then(function (data) {
-      if (!data || !data.keys || !Array.isArray(data.keys)) return;
-      const item = data.keys.find(function (k) { return k.key === 'highscore'; });
-      if (item && item.value) {
-        const cloudScore = parseInt(item.value, 10) || 0;
-        if (cloudScore > highscore) {
-          highscore = cloudScore;
-          saveHighscore();
-          updateMenuBest();
-        }
-      }
-    })
-    .catch(function (err) {
-      console.warn('[VK] init failed, using localStorage fallback:', err);
-      vkBridgeReady = false;
-    });
-}
-
-function saveToVKStorage() {
-  if (!vkBridgeReady || typeof vkBridge === 'undefined') return;
-  try {
-    const p = vkBridge.send('VKWebAppStorageSet', {
-      key: 'highscore',
-      value: String(highscore)
-    });
-    if (p && p.catch) p.catch(function () { /* ignore */ });
-  } catch (e) { /* ignore */ }
-}
-
-function exitToVK() {
-  let bridgePromise = null;
-  if (typeof vkBridge !== 'undefined') {
-    try {
-      bridgePromise = vkBridge.send('VKWebAppClose', { status: 'success' });
-    } catch (e) {
-      bridgePromise = null;
-    }
-  }
-  if (bridgePromise && bridgePromise.catch) {
-    bridgePromise.catch(function () { openVKPlayHome(); });
-  } else {
-    openVKPlayHome();
-  }
-}
-
-function openVKPlayHome() {
-  try {
-    const w = window.open('https://vkplay.ru/', '_blank', 'noopener,noreferrer');
-    if (!w) console.info('[VK] popup blocked — exit handled silently');
-  } catch (e) { /* ignore */ }
-}
-
-/* ═════════════════════════════════════════════════════════════════════════
-   [AD-FIX] РЕКЛАМНАЯ МОНЕТИЗАЦИЯ
-   ═════════════════════════════════════════════════════════════════════════ */
-
-// Interstitial: показываем раз в 3 игры
-function showInterstitialAd() {
-  if (!vkBridgeReady || typeof vkBridge === 'undefined') return;
-  try {
-    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-      .then(function (data) {
-        if (data && data.result) console.log('[VK Ads] Interstitial shown');
-      })
-      .catch(function (err) {
-        console.warn('[VK Ads] Interstitial error:', err);
-      });
-  } catch (e) {
-    console.warn('[VK Ads] Interstitial exception:', e);
-  }
-}
-
-// Rewarded: показываем по клику игрока
-let isRewardLoading = false;
-function showRewardedAd(onSuccess) {
-  if (isRewardLoading) return;
-  if (!vkBridgeReady || typeof vkBridge === 'undefined') {
-    console.info('[VK Ads] Bridge not ready, skipping ad');
-    return;
-  }
-
-  isRewardLoading = true;
-  const btn = dom.btnRewardedAd;
-  const originalText = btn.textContent;
-  
-  btn.disabled = true;
-  btn.textContent = '⏳ Загрузка...';
-
-  // На время рекламы ставим звук на паузу
-  Sound.stopAmbient();
-  if (Sound.ctx && Sound.ctx.state === 'running') {
-    try { Sound.ctx.suspend(); } catch (e) {}
-  }
-
-  vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
-    .then(function (data) {
-      // Проверяем, что реклама была показана и досмотрена
-      if (data && data.result) {
-        onSuccess();
-      }
-    })
-    .catch(function (err) {
-      console.warn('[VK Ads] Rewarded error:', err);
-    })
-    .finally(function () {
-      isRewardLoading = false;
-      btn.disabled = false;
-      btn.textContent = originalText;
-      
-      // Возвращаем звук
-      if (Sound.enabled) {
-        Sound.init();
-        Sound.resume();
-        if (state === 'menu' || state === 'gameover') Sound.startAmbient();
-      }
-    });
-}
 
 /* ═════════════════════════════════════════════════════════════════════════
    I18N — локализация RU/EN
@@ -460,7 +349,6 @@ const I18N = {
     btnExit: '⏻  Выйти из игры',
     menuSaveNote: 'Ваш рекорд сохраняется автоматически',
     goSaveNote: 'Рекорд сохранён',
-    btnRewardedAd: '🎁 Смотреть рекламу и получить ×2',
     howtoHTML: '<h2 class="title-sm">Как играть</h2>' +
       '<div class="howto">' +
         '<div class="howto-block">' +
@@ -514,7 +402,6 @@ const I18N = {
     btnExit: '⏻  Exit game',
     menuSaveNote: 'Your high score is saved automatically',
     goSaveNote: 'Score saved',
-    btnRewardedAd: '🎁 Watch Ad & Get ×2',
     howtoHTML: '<h2 class="title-sm">How to play</h2>' +
       '<div class="howto">' +
         '<div class="howto-block">' +
@@ -582,11 +469,6 @@ function applyLang(lang) {
   if (el('btnPauseMenu')) el('btnPauseMenu').textContent = T.btnToMenu;
 
   if (el('btnToMenu')) el('btnToMenu').textContent = T.btnToMenu;
-
-  // [AD-FIX] Обновляем текст кнопки рекламы (если она не в процессе загрузки)
-  if (el('btnRewardedAd') && !isRewardLoading) {
-    el('btnRewardedAd').textContent = T.btnRewardedAd;
-  }
 
   updateSoundButtons();
 
@@ -828,6 +710,7 @@ const dom = {
   scrMenu:    document.getElementById('scrMenu'),
   scrHowTo:   document.getElementById('scrHowTo'),
   scrGameOver:document.getElementById('scrGameOver'),
+  scrShop:    document.getElementById('scrShop'),
   scrPaused:  document.getElementById('scrPaused'),
   hud:        document.getElementById('hud'),
   touchUI:    document.getElementById('touchUI'),
@@ -848,9 +731,11 @@ const dom = {
   btnHowToClose: document.getElementById('btnHowToClose'),
   btnSound:   document.getElementById('btnSound'),
   btnExit:    document.getElementById('btnExit'),
+  btnShop:    document.getElementById('btnShop'),
+  btnShopClose: document.getElementById('btnShopClose'),
   btnRestart: document.getElementById('btnRestart'),
   btnToMenu:  document.getElementById('btnToMenu'),
-  btnRewardedAd: document.getElementById('btnRewardedAd'), // [AD-FIX]
+  btnRevive:  document.getElementById('btnRevive'),
   hudSound:   document.getElementById('hudSound'),
   hudPause:   document.getElementById('hudPause'),
   btnResume:  document.getElementById('btnResume'),
@@ -875,6 +760,9 @@ let shake = 0;
 let time = 0;
 let dpr = 1;
 let gameOverTimer = null;
+let invulnTimer = 0;
+let lastRunScore = 0;
+let lastRunWasTutorial = false;
 
 const player = {
   x: CFG.playerX,
@@ -1397,12 +1285,14 @@ function endGame() {
 
   const finalScore = Math.floor(score);
   const wasTutorial = tutorial.active;
+  lastRunScore = finalScore;
+  lastRunWasTutorial = wasTutorial;
 
   if (!wasTutorial && finalScore > highscore) {
     highscore = finalScore;
     isNewRecord = true;
     saveHighscore();
-    saveToVKStorage();
+    VKPlayBilling.saveCloudScore(highscore);
   }
 
   gamesPlayed++;
@@ -1420,7 +1310,6 @@ function endGame() {
       dom.goBestRow.textContent = T.goTutoBest.replace('{n}', CFG.tutorialTarget);
       dom.btnRestart.textContent = T.btnRetryTuto;
       if (dom.goSaveNote) dom.goSaveNote.style.display = 'none';
-      if (dom.btnRewardedAd) dom.btnRewardedAd.style.display = 'none'; // Скрываем рекламу в туториале
     } else {
       dom.goTitle.textContent = T.goTitle;
       dom.goRecord.hidden = !isNewRecord;
@@ -1430,11 +1319,6 @@ function endGame() {
       dom.goBestRow.innerHTML = T.goBestPrefix + '<span>' + highscore + '</span>';
       dom.btnRestart.textContent = T.btnRestart;
       if (dom.goSaveNote) dom.goSaveNote.style.display = '';
-      
-      // [AD-FIX] Показываем кнопку рекламы только если есть VK Bridge
-      if (dom.btnRewardedAd && vkBridgeReady) {
-        dom.btnRewardedAd.style.display = 'flex';
-      }
     }
     dom.btnToMenu.textContent = T.btnToMenu;
 
@@ -1442,17 +1326,14 @@ function endGame() {
     dom.touchUI.classList.remove('visible');
     dom.scrGameOver.classList.add('active');
     updateMenuBest();
-
-    // [AD-FIX] Interstitial реклама раз в 3 игры (если не туториал)
-    if (!wasTutorial && gamesPlayed % 3 === 0) {
-      setTimeout(showInterstitialAd, 1500);
-    }
+    VKPlayBilling.onGameOver(finalScore, wasTutorial);
   }, 750);
 }
 
 function setState(next) {
   state = next;
 
+  if (dom.scrShop) dom.scrShop.classList.remove('active');
   dom.scrMenu.classList.toggle('active', next === 'menu');
   dom.scrHowTo.classList.toggle('active', next === 'howto');
   if (dom.scrPaused) dom.scrPaused.classList.toggle('active', next === 'paused');
@@ -1591,31 +1472,7 @@ dom.btnHowTo.addEventListener('click', () => setState('howto'));
 dom.btnHowToClose.addEventListener('click', () => setState('menu'));
 
 if (dom.btnExit) {
-  dom.btnExit.addEventListener('click', () => { exitToVK(); });
-}
-
-// [AD-FIX] Обработчик клика по кнопке Rewarded Video
-if (dom.btnRewardedAd) {
-  dom.btnRewardedAd.addEventListener('click', () => {
-    showRewardedAd(() => {
-      // Награда: +100 очков к текущему результату и пересохранение
-      score += 100;
-      highscore += 100;
-      saveHighscore();
-      saveToVKStorage();
-      updateMenuBest();
-      
-      // Обновляем UI Game Over
-      const finalScore = Math.floor(score);
-      dom.goScore.textContent = String(finalScore);
-      dom.goBestRow.innerHTML = I18N[currentLang].goBestPrefix + '<span>' + highscore + '</span>';
-      dom.goRecord.hidden = false;
-      dom.goRecord.textContent = '🎁 НАГРАДА ПОЛУЧЕНА!';
-      
-      // Скрываем кнопку рекламы, чтобы не накручивали бесконечно
-      dom.btnRewardedAd.style.display = 'none';
-    });
-  });
+  dom.btnExit.addEventListener('click', () => { VKPlayBilling.exit(); });
 }
 
 if (dom.hudPause) {
@@ -1780,6 +1637,7 @@ function updateEntities(dt) {
   const ents = world.entities;
   const playerCX = player.x + CFG.playerW / 2;
   const playerCY = player.feetY - player.h / 2;
+  const invulnerable = invulnTimer > 0;
 
   for (let i = ents.length - 1; i >= 0; i--) {
     const e = ents[i];
@@ -1823,23 +1681,23 @@ function updateEntities(dt) {
       const cx = e.x + (e.w - cw) / 2;
       const ch = e.h * 0.72;
       const cy = e.y + e.h - ch;
-      if (aabb(hit.x, hit.y, hit.w, hit.h, cx, cy, cw, ch)) { endGame(); return; }
+      if (aabb(hit.x, hit.y, hit.w, hit.h, cx, cy, cw, ch)) { if (!invulnerable) { endGame(); return; } }
     }
     else if (e.type === 'barrier' || e.type === 'bar' || e.type === 'block') {
       if (aabb(hit.x, hit.y, hit.w, hit.h, e.x + 3, e.y + 3, e.w - 6, e.h - 6)) {
-        endGame(); return;
+        if (!invulnerable) { endGame(); return; }
       }
     }
     else if (e.type === 'breakable') {
       if (aabb(hit.x, hit.y, hit.w, hit.h, e.x + 3, e.y + 3, e.w - 6, e.h - 6)) {
-        endGame(); return;
+        if (!invulnerable) { endGame(); return; }
       }
     }
     else if (e.type === 'drone') {
       const cx = e.x + e.w / 2;
       const cy = e.y + e.h / 2;
       const cr = e.w * 0.42;
-      if (circleRect(cx, cy, cr, hit.x, hit.y, hit.w, hit.h)) { endGame(); return; }
+      if (circleRect(cx, cy, cr, hit.x, hit.y, hit.w, hit.h)) { if (!invulnerable) { endGame(); return; } }
       if (!e.nearMissAwarded) {
         const dx = cx - playerCX;
         const dy = cy - playerCY;
@@ -1854,7 +1712,7 @@ function updateEntities(dt) {
       const cx = e.x + e.w / 2;
       const cy = e.y + e.h / 2;
       const cr = e.w * 0.44;
-      if (circleRect(cx, cy, cr, hit.x, hit.y, hit.w, hit.h)) { endGame(); return; }
+      if (circleRect(cx, cy, cr, hit.x, hit.y, hit.w, hit.h)) { if (!invulnerable) { endGame(); return; } }
       if (!e.nearMissAwarded) {
         const dx = cx - playerCX;
         const dy = cy - playerCY;
@@ -1895,6 +1753,7 @@ function activateBonus() {
 /* ══════════════════════════ ГЛАВНЫЙ UPDATE ══════════════════════════ */
 function updatePlay(dt) {
   world.time += dt;
+  if (invulnTimer > 0) invulnTimer = Math.max(0, invulnTimer - dt);
   world.speed = computeSpeed();
 
   if (tutorial.active && tutorial.stage === TUT.JUMP) {
@@ -2577,8 +2436,10 @@ function drawPlayer() {
     visor:  '#091825',
     glow:   '#ffd166'
   };
+  Object.assign(C, VKPlayBilling.getPlayerPalette());
 
   ctx.save();
+  if (invulnTimer > 0) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(time * 22);
   ctx.translate(cx, feetY);
   ctx.scale(1 / stretch, stretch);
   ctx.scale(1, curH / CFG.standH);
@@ -2701,12 +2562,13 @@ function drawPlayer() {
 
 function drawTrail() {
   const arr = world.trail;
+  const trailColor = VKPlayBilling.getTrailColor();
   for (let i = 0; i < arr.length; i++) {
     const t = arr[i];
     const a = clamp(t.life / t.maxLife, 0, 1);
     ctx.globalAlpha = a * 0.55;
-    ctx.fillStyle = '#4de2c5';
-    ctx.shadowColor = '#4de2c5';
+    ctx.fillStyle = trailColor;
+    ctx.shadowColor = trailColor;
     ctx.shadowBlur = 14 * a;
     ctx.beginPath();
     ctx.arc(t.x, t.y, t.size * (0.4 + a * 0.6), 0, TAU);
@@ -2858,7 +2720,7 @@ function init() {
   updateMenuBest();
   updateSoundButtons();
 
-  initVKBridge();
+  VKPlayBilling.init();
 
   resetGame();
   setState('menu');
