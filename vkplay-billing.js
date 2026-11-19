@@ -37,6 +37,7 @@
   var st = {
     appId: '',
     apiBase: '',
+    clientIp: '',
     uid: '',
     currency: 'RUB',
     api: null,
@@ -185,12 +186,14 @@
         if (st.api) st.api.getLoginStatus();
       },
       paymentReceivedCallback: function (data) {
+        console.info('[billing] paymentReceived', data);
         if (data && data.uid) st.uid = String(data.uid);
         fetchEntitlements().then(function () {
           setStatus(t('Оплата прошла! Привилегии активированы.', 'Payment complete! Your perks are active.'));
         });
       },
       paymentWindowClosedCallback: function () {
+        console.info('[billing] paymentWindowClosed');
         setStatus(t('Окно оплаты закрыто. Если оплату вы провели, обновите страницу.',
           'Payment window closed. Refresh the page if you have paid.'));
       },
@@ -241,6 +244,19 @@
   }
 
   /* ─── Server: entitlements / score ─────────────────────────────────── */
+
+  // IP нужен в merchant_param: платформа требует IPv4 покупателя (ошибка 2003).
+  // Берём его со своего бэкенда, без сторонних сервисов.
+  function fetchClientIp() {
+    if (st.clientIp) return Promise.resolve(st.clientIp);
+    return fetch(apiUrl('/api/client-ip'))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.status === 'ok' && data.ip) st.clientIp = data.ip;
+        return st.clientIp;
+      })
+      .catch(function () { return st.clientIp; });
+  }
 
   function fetchEntitlements() {
     if (!st.uid) return Promise.resolve();
@@ -380,18 +396,28 @@
     }
 
     waitForAuth().then(function () {
-      var currency = paymentCurrency();
-      var merchantParam = {
-        uid: String(st.uid),
-        amount: item.prices[currency] || item.prices.RUB,
-        currency: currency,
-        description: item.short,
-        item_id: item.id,
-        additional_param: 'neonvolt_' + Date.now()
-      };
+      return fetchClientIp().then(function (ip) {
+        var currency = paymentCurrency();
+        var merchantParam = {
+          uid: String(st.uid),
+          amount: item.prices[currency] || item.prices.RUB,
+          currency: currency,
+          description: item.short,
+          item_id: item.id,
+          additional_param: 'neonvolt_' + Date.now()
+        };
+        if (ip) merchantParam.ip = ip;
 
-      st.api.paymentFrame({ merchant_param: merchantParam });
-      setStatus(t('Открываем окно оплаты...', 'Opening the payment window...'));
+        try {
+          st.api.paymentFrame({ scenario: 'item', merchant_param: merchantParam });
+          console.info('[billing] paymentFrame', merchantParam);
+        } catch (e) {
+          console.warn('[billing] paymentFrame failed', e);
+          setStatus(t('Не удалось открыть окно оплаты.', 'Could not open the payment window.'), true);
+          return;
+        }
+        setStatus(t('Открываем окно оплаты...', 'Opening the payment window...'));
+      });
     }).catch(function (err) {
       setStatus(err && err.message ? err.message : t('Не удалось открыть оплату.', 'Could not open payment.'), true);
     });
